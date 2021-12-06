@@ -1,0 +1,92 @@
+---
+title: "Reproducible Research. Course project1"
+author: "Nadine.solov"
+date: "04 12 2021"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+## Loading and preprocessing the data
+```{r Load_data}
+data <- read.csv(unz("repdata_data_activity (3).zip","activity.csv"),
+                 header=TRUE,
+                 na.strings="NA",
+                 colClasses=c("numeric","character","numeric"))
+data$DateTime <- strptime(paste(data$date, sprintf("%04d",data$interval), sep=" "),
+                          format="%Y-%m-%d %H%M")
+```
+
+
+## What is mean total number of steps taken per day?
+
+The histogram shown below is the number of steps taken daily from the dataset
+```{r Histogram}
+stepsPerDay <- aggregate(steps~date,data,FUN=sum)
+hist(stepsPerDay$steps, xlab="Steps Per Day", breaks=15, main="Histogram of Steps Per Day")
+mean(stepsPerDay$steps)
+median(stepsPerDay$steps)
+```
+
+
+## What is the average daily activity pattern?
+The plot shown below is the average daily activity of the person, this isin 5 minute intervals
+```{r Daily_average}
+IntSteps <- aggregate(steps~interval,data,FUN=mean)
+plot(IntSteps$interval,IntSteps$steps,
+     type="l",
+     xlab="Interval",
+     ylab="Mean number of steps")
+```
+Find the interval with the maximum number of average steps
+```{r Max_Steps}
+IntSteps[IntSteps$steps == max(IntSteps$steps),]$interval
+```
+
+
+## Imputing missing values
+To imput missing values in the dataset, "NA" values for the number of steps within a 5-minute interval were replaced with the average number of steps.
+```{r}
+sum(is.na(data$steps))
+```
+We want to replace the NA values with the mean for that interval, which we calculated above
+```{r Replace_na}
+noData <- data[is.na(data$steps),]
+replacementData <- IntSteps[IntSteps$interval == noData$interval,]
+data$steps <- replace(data$steps,
+                      is.na(data$steps), 
+                      replacementData$steps)
+```
+The revised dataset containing the imputed values was then used to calculate daily totals.  The histogram below shows the frequency of various values of total daily steps across the revised dataset.
+```{r New_Data}
+newStepsPerDay <- aggregate(steps~date,data,FUN=sum)
+hist(newStepsPerDay$steps, xlab="Steps Per Day", 
+     breaks=15, main="Histogram of Steps Per Day with Imputed Values")
+mean(newStepsPerDay$steps)
+median(newStepsPerDay$steps)
+```
+## Are there differences in activity patterns between weekdays and weekends?
+A column was added to determine weather the specific data was on a weekday, or a weekend.
+The two plots show that there are many differences between the activity of the user on a weekday and a weekend.
+For example, as you can see on the plots, this person is usually active earlier on weekdays, then on weekends.
+```{r Weekend_Weekday}
+library(lattice)
+data$DayOfWeek = factor(ifelse(weekdays(data$DateTime)=="Saturday" |
+                                 weekdays(data$DateTime)=="Sunday",
+                               "weekend",
+                               "weekday"))
+weekendData <- data[data$DayOfWeek=="weekend",]
+weekdayData <- data[data$DayOfWeek=="weekday",]
+IntStepsWeekend <- aggregate(steps~interval,weekendData,FUN=mean)
+IntStepsWeekend$DayOfWeek <- "weekend"
+IntStepsWeekday <- aggregate(steps~interval,weekdayData,FUN=mean)
+IntStepsWeekday$DayOfWeek <- "weekday"
+IntStepsTotal <- rbind(IntStepsWeekend,IntStepsWeekday)
+xyplot(steps~interval | DayOfWeek, 
+       data=IntStepsTotal, 
+       ylab="Number of steps", 
+       xlab="Interval",
+       layout=c(1,2), 
+       type="l")
+```
+
