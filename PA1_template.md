@@ -1,7 +1,7 @@
 ---
 title: "Reproducible Research. Course project1"
-author: "Nadine.solov"
-date: "04 12 2021"
+author: "Leah Raymond"
+date: "12 06 2021"
 output: 
   html_document: 
     keep_md: yes
